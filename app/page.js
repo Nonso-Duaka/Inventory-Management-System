@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import axios from 'axios'
 import { Box, Stack, Typography, Button, Modal, TextField, IconButton, MenuItem, Select, InputLabel, FormControl } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
@@ -38,18 +39,19 @@ const containerStyle = {
   flexDirection: 'column',
   alignItems: 'center',
   gap: 2,
-  bgcolor: '#f0f4f8', // Light grey background color
+  bgcolor: '#f0f4f8',
+  padding: 2,
 }
 
 const headerStyle = {
   width: '100%',
   maxWidth: 800,
-  bgcolor: '#00796b', // Teal background for the header
+  bgcolor: '#00796b',
   color: 'white',
   p: 2,
   borderRadius: 1,
   textAlign: 'center',
-  textShadow: '2px 2px 4px rgba(0,0,0,0.3)', // Subtle 3D text effect
+  textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
 }
 
 const itemBoxStyle = {
@@ -58,7 +60,7 @@ const itemBoxStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  bgcolor: '#ffffff', // White color for item box
+  bgcolor: '#ffffff',
   padding: '10px 20px',
   borderRadius: 1,
   boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
@@ -66,20 +68,27 @@ const itemBoxStyle = {
 
 const textBoxStyle = {
   padding: '5px 10px',
-  bgcolor: '#e0f2f1', // Very light teal shade
+  bgcolor: '#e0f2f1',
   borderRadius: 1,
-  textShadow: '1px 1px 2px rgba(0,0,0,0.1)', // Subtle 3D text effect
-  fontSize: '16px', // Set a consistent font size
+  textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
+  fontSize: '16px',
 }
 
 const inventoryContainerStyle = {
   width: '100%',
   maxWidth: 800,
-  maxHeight: 400, // Set a maximum height for the container
+  maxHeight: 400,
   border: '1px solid #00796b',
   borderRadius: 1,
-  overflowY: 'auto', // Enable vertical scrolling
+  overflowY: 'auto',
   mt: 2,
+  bgcolor: 'white',
+}
+
+const searchBarStyle = {
+  mb: 2,
+  width: '100%',
+  maxWidth: 800,
 }
 
 export default function Home() {
@@ -88,6 +97,10 @@ export default function Home() {
   const [itemName, setItemName] = useState('')
   const [category, setCategory] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [image, setImage] = useState(null)
+  const [classification, setClassification] = useState('')
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
@@ -145,7 +158,41 @@ export default function Home() {
   }
 
   const handleOpen = () => setOpen(true)
-  const handleClose = () => setOpen(false)
+  const handleClose = () => {
+    setOpen(false)
+    setImage(null)
+    setClassification('')
+  }
+
+  const startCamera = async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      videoRef.current.srcObject = stream
+      videoRef.current.play()
+    }
+  }
+
+  const captureImage = () => {
+    const context = canvasRef.current.getContext('2d')
+    context.drawImage(videoRef.current, 0, 0, 640, 480)
+    canvasRef.current.toBlob(async (blob) => {
+      const formData = new FormData()
+      formData.append('file', blob)
+      formData.append('upload_preset', 'your_upload_preset') // For image upload service
+
+      try {
+        const response = await axios.post('https://api.imagerecognition.com/classify', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer abc123xyz456`
+          }
+        })
+        setClassification(response.data.classification)
+      } catch (error) {
+        console.error('Error classifying image:', error)
+      }
+    })
+  }
 
   const filteredInventory = inventory.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -196,7 +243,7 @@ export default function Home() {
             </FormControl>
             <Button
               variant="contained"
-              sx={{ bgcolor: '#00796b' }} // Teal add button
+              sx={{ bgcolor: '#00796b' }}
               onClick={() => {
                 addItem(itemName)
                 setItemName('')
@@ -216,41 +263,48 @@ export default function Home() {
         fullWidth
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 2 }}
+        sx={searchBarStyle}
       />
-      <Button variant="contained" sx={{ bgcolor: '#00796b' }} onClick={handleOpen}>
-        Add New Item
-      </Button>
+      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <Button variant="contained" sx={{ bgcolor: '#00796b' }} onClick={handleOpen}>
+          Add New Item
+        </Button>
+        <Button variant="contained" sx={{ bgcolor: '#00796b' }} onClick={startCamera}>
+          Start Camera
+        </Button>
+        <Button variant="contained" sx={{ bgcolor: '#00796b' }} onClick={captureImage}>
+          Capture Image
+        </Button>
+      </Stack>
       <Box sx={inventoryContainerStyle}>
-        <Box sx={headerStyle}>
-          <Typography variant={'h4'}>
-            Inventory Items
-          </Typography>
-        </Box>
-        <Stack width="100%" spacing={2} p={2}>
-          {filteredInventory.map(({ name, quantity, category }) => (
-            <Box key={name} sx={itemBoxStyle}>
-              <Typography variant={'body1'} sx={textBoxStyle} style={{ flex: 1 }}>
-                {name.charAt(0).toUpperCase() + name.slice(1)}
-              </Typography>
-              <Typography variant={'body1'} sx={textBoxStyle} style={{ flex: 1 }}>
-                Category: {category}
-              </Typography>
-              <Stack direction="row" alignItems="center" spacing={1} style={{ flex: 1, justifyContent: 'space-between' }}>
-                <Typography variant={'body1'} sx={textBoxStyle}>
-                  Quantity: {quantity}
-                </Typography>
-                <IconButton sx={{ color: '#00796b' }} onClick={() => increaseQuantity(name)}>
-                  <AddIcon />
-                </IconButton>
-                <IconButton sx={{ color: '#d32f2f' }} onClick={() => removeItem(name)}>
+        <Stack spacing={2} sx={{ padding: 2 }}>
+          {filteredInventory.map((item) => (
+            <Box key={item.name} sx={itemBoxStyle}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography sx={textBoxStyle}>{item.name}</Typography>
+                <Typography sx={textBoxStyle}>{item.category}</Typography>
+                <Typography sx={textBoxStyle}>Quantity: {item.quantity}</Typography>
+              </Box>
+              <Box>
+                <IconButton
+                  color="primary"
+                  onClick={() => removeItem(item.name)}
+                >
                   <DeleteIcon />
                 </IconButton>
-              </Stack>
+                <IconButton
+                  color="primary"
+                  onClick={() => increaseQuantity(item.name)}
+                >
+                  <AddIcon />
+                </IconButton>
+              </Box>
             </Box>
           ))}
         </Stack>
       </Box>
+      <video ref={videoRef} style={{ display: 'none' }}></video>
+      <canvas ref={canvasRef} style={{ display: 'none' }} width="640" height="480"></canvas>
     </Box>
   )
 }
