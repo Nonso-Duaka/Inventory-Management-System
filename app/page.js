@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, firestore } from '@/firebase';
 import {
@@ -13,8 +14,6 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import debounce from 'lodash/debounce';
 import Login from './components/Login';
-
-
 
 const modalStyle = {
   position: 'absolute',
@@ -120,6 +119,32 @@ const quantityStyle = {
   justifyContent: 'flex-end',
 };
 
+// Debounce function moved outside to avoid recreation on each render
+const debouncedSearch = debounce((value, setSearchTerm) => {
+  setSearchTerm(value);
+}, 300);
+
+// Memoized component to avoid unnecessary re-renders
+const InventoryItem = React.memo(({ item, removeItem, increaseQuantity }) => (
+  <Box sx={itemBoxStyle}>
+    <Box sx={itemContentStyle}>
+      <Box sx={itemTextStyle}>
+        <Box component="img" src={item.image} alt={item.name} sx={{ width: 50, height: 50, borderRadius: '50%' }} />
+        <Typography variant="h6" sx={textBoxStyle}>{item.name}</Typography>
+      </Box>
+      <Box sx={quantityStyle}>
+        <Typography variant="h6" sx={textBoxStyle}>{item.quantity}</Typography>
+        <IconButton onClick={() => removeItem(item.name)} sx={{ ml: 1 }}>
+          <DeleteIcon />
+        </IconButton>
+        <IconButton onClick={() => increaseQuantity(item.name)} sx={{ ml: 1 }}>
+          <AddIcon />
+        </IconButton>
+      </Box>
+    </Box>
+  </Box>
+));
+
 export default function Home() {
   const [user, setUser] = useState(null);
   const [inventory, setInventory] = useState([]);
@@ -158,10 +183,7 @@ export default function Home() {
     try {
       const snapshot = query(collection(firestore, 'inventory'));
       const docs = await getDocs(snapshot);
-      const inventoryList = [];
-      docs.forEach((doc) => {
-        inventoryList.push({ name: doc.id, ...doc.data() });
-      });
+      const inventoryList = docs.docs.map(doc => ({ name: doc.id, ...doc.data() }));
       setInventory(inventoryList);
     } catch (error) {
       console.error('Error updating inventory:', error);
@@ -258,39 +280,27 @@ export default function Home() {
     }
   };
 
-  const captureImage = async () => {
-    const context = canvasRef.current.getContext('2d');
-    context.drawImage(videoRef.current, 0, 0, 640, 480);
-    canvasRef.current.toBlob(async (blob) => {
-      const base64Image = await convertBlobToBase64(blob);
-      setImage(base64Image);
-    }, 'image/jpeg');
-  };
-
-  const convertBlobToBase64 = (blob) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  const captureImage = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL('image/png');
+    setImage(imageData);
   };
 
   const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
+    setDrawerOpen((prev) => !prev);
   };
-
-  const debouncedSearch = useCallback(
-    debounce((value) => {
-      console.log('Search term:', value);
-      setSearchTerm(value);
-    }, 300),
-    []
-  );
 
   const handleSearchChange = (e) => {
-    debouncedSearch(e.target.value);
+    debouncedSearch(e.target.value, setSearchTerm);
   };
+
+  const filteredInventory = useMemo(
+    () => inventory.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase())),
+    [inventory, searchTerm]
+  );
 
   if (!user) {
     return <Login onLogin={() => updateInventory()} />;
@@ -308,11 +318,7 @@ export default function Home() {
           </Typography>
         </Toolbar>
       </AppBar>
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={toggleDrawer}
-      >
+      <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer}>
         <Box sx={sidebarStyle}>
           <Typography variant="h5">Inventory</Typography>
           <Button variant="contained" color="primary" onClick={handleOpen}>
@@ -333,27 +339,14 @@ export default function Home() {
           sx={searchBarStyle}
         />
         <Stack sx={inventoryContainerStyle}>
-          {inventory
-            .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            .map((item) => (
-              <Box key={item.name} sx={itemBoxStyle}>
-                <Box sx={itemContentStyle}>
-                  <Box sx={itemTextStyle}>
-                    <Box component="img" src={item.image} alt={item.name} sx={{ width: 50, height: 50, borderRadius: '50%' }} />
-                    <Typography variant="h6" sx={textBoxStyle}>{item.name}</Typography>
-                  </Box>
-                  <Box sx={quantityStyle}>
-                    <Typography variant="h6" sx={textBoxStyle}>{item.quantity}</Typography>
-                    <IconButton onClick={() => removeItem(item.name)} sx={{ ml: 1 }}>
-                      <DeleteIcon />
-                    </IconButton>
-                    <IconButton onClick={() => increaseQuantity(item.name)} sx={{ ml: 1 }}>
-                      <AddIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
-              </Box>
-            ))}
+          {filteredInventory.map((item) => (
+            <InventoryItem
+              key={item.name}
+              item={item}
+              removeItem={removeItem}
+              increaseQuantity={increaseQuantity}
+            />
+          ))}
         </Stack>
       </Box>
       <Modal open={open} onClose={handleClose}>
