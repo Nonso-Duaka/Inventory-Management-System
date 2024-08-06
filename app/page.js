@@ -15,6 +15,7 @@ import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'fire
 import debounce from 'lodash/debounce';
 import Login from './components/Login';
 
+
 const modalStyle = {
   position: 'absolute',
   top: '50%',
@@ -63,6 +64,7 @@ const inventoryContainerStyle = {
 const itemBoxStyle = {
   display: 'flex',
   alignItems: 'center',
+  justifyContent: 'space-between',
   bgcolor: 'white',
   padding: '10px 20px',
   borderRadius: 1,
@@ -73,9 +75,8 @@ const itemBoxStyle = {
 const itemContentStyle = {
   display: 'flex',
   alignItems: 'center',
-  flexDirection: 'row', // Align items side by side
-  flex: 1,
   gap: 2,
+  flex: 1,
 };
 
 const itemImageStyle = {
@@ -86,11 +87,9 @@ const itemImageStyle = {
 
 const itemTextStyle = {
   display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'flex-start',
-  justifyContent: 'center',
+  alignItems: 'center',
+  justifyContent: 'space-between',
   flexGrow: 1,
-  gap: 0.5,
 };
 
 const quantityStyle = {
