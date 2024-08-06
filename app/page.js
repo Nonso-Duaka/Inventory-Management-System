@@ -12,7 +12,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import { collection, doc, getDocs, query, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import debounce from 'lodash/debounce';
-import Login from './Login';
+import Login from './components/Login';
+
+
 
 const modalStyle = {
   position: 'absolute',
