@@ -48,26 +48,6 @@ const headerStyle = {
   textAlign: 'center',
 };
 
-const itemBoxStyle = {
-  width: '100%',
-  minHeight: 80,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  bgcolor: 'white',
-  padding: '10px 20px',
-  borderRadius: 1,
-  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-  marginBottom: '10px',
-};
-
-const textBoxStyle = {
-  padding: '5px 10px',
-  bgcolor: '#f5e0d1',
-  borderRadius: 1,
-  fontSize: '16px',
-};
-
 const inventoryContainerStyle = {
   width: '100%',
   maxWidth: 800,
@@ -78,6 +58,52 @@ const inventoryContainerStyle = {
   mt: 2,
   bgcolor: 'white',
   padding: '10px',
+};
+
+const itemBoxStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  bgcolor: 'white',
+  padding: '10px 20px',
+  borderRadius: 1,
+  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+  marginBottom: '10px',
+};
+
+const itemContentStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  flexDirection: 'row', // Align items side by side
+  flex: 1,
+  gap: 2,
+};
+
+const itemImageStyle = {
+  width: 50,
+  height: 50,
+  borderRadius: '50%',
+};
+
+const itemTextStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  justifyContent: 'center',
+  flexGrow: 1,
+  gap: 0.5,
+};
+
+const quantityStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 1,
+};
+
+const textBoxStyle = {
+  padding: '5px 10px',
+  bgcolor: '#f5e0d1',
+  borderRadius: 1,
+  fontSize: '16px',
 };
 
 const searchBarStyle = {
@@ -99,38 +125,17 @@ const sidebarStyle = {
   height: '100%',
 };
 
-const itemContentStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  width: '100%',
-};
-
-const itemTextStyle = {
-  flexGrow: 1,
-  display: 'flex',
-  alignItems: 'center',
-};
-
-const quantityStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  minWidth: '100px', // Ensure there's enough space for the quantity
-  justifyContent: 'flex-end',
-};
-
-// Debounce function moved outside to avoid recreation on each render
 const debouncedSearch = debounce((value, setSearchTerm) => {
   setSearchTerm(value);
 }, 300);
 
-// Memoized component to avoid unnecessary re-renders
 const InventoryItem = React.memo(({ item, removeItem, increaseQuantity }) => (
   <Box sx={itemBoxStyle}>
     <Box sx={itemContentStyle}>
+      <Box component="img" src={item.image} alt={item.name} sx={itemImageStyle} />
       <Box sx={itemTextStyle}>
-        <Box component="img" src={item.image} alt={item.name} sx={{ width: 50, height: 50, borderRadius: '50%' }} />
         <Typography variant="h6" sx={textBoxStyle}>{item.name}</Typography>
+        <Typography variant="subtitle1" sx={textBoxStyle}>{item.category}</Typography>
       </Box>
       <Box sx={quantityStyle}>
         <Typography variant="h6" sx={textBoxStyle}>{item.quantity}</Typography>
@@ -281,12 +286,12 @@ export default function Home() {
   };
 
   const captureImage = () => {
-    const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = canvas.toDataURL('image/png');
-    setImage(imageData);
+    if (videoRef.current && context) {
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      setImage(canvas.toDataURL('image/png'));
+    }
   };
 
   const toggleDrawer = () => {
@@ -369,6 +374,9 @@ export default function Home() {
               <MenuItem value="Food">Food</MenuItem>
               <MenuItem value="Drinks">Drinks</MenuItem>
               <MenuItem value="Supplies">Supplies</MenuItem>
+              <MenuItem value="Electronics">Electronics</MenuItem>
+              <MenuItem value="Clothing">Clothing</MenuItem>
+              <MenuItem value="Furniture">Furniture</MenuItem>
             </Select>
           </FormControl>
           <Button variant="contained" component="label">
